@@ -1,0 +1,4 @@
+It'd be nice to allow strings as variable names:
+{{ "txtusername" }} should be the variable [{"txtusername", "value"}] and expand to "value".
+
+As erlydtl outputs iolists it'd be nice to use more binaries - all {text, Text} asts should compile to <<Text>>.
