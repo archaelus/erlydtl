@@ -93,8 +93,8 @@ compile(File, Module, Options) ->
         {ok, DjangoParseTree, CheckSum} ->
             case compile_to_binary(File, DjangoParseTree, Context, CheckSum) of
                 {ok, Module1, Bin} ->
-                    OutDir = proplists:get_value(out_dir, Options, "ebin"),       
-                    BeamFile = filename:join([OutDir, atom_to_list(Module1) ++ ".beam"]),
+                    OutDir = proplists:get_value(out_dir, Options, "ebin"),
+                    BeamFile = filename:join([OutDir, module_to_filename(Module1)]),
                     case file:write_file(BeamFile, Bin) of
                         ok ->
                             ok;
@@ -107,7 +107,14 @@ compile(File, Module, Options) ->
         Err ->
             Err
     end.
-    
+
+module_to_filename(Module) when is_atom(Module) ->
+    case string:tokens(atom_to_list(Module), ".") of
+        [File] ->
+            File ++ ".beam";
+        Path when length(Path) > 1 ->
+            filename:join(Path) ++ ".beam"
+    end.
 
 %%====================================================================
 %% Internal functions
