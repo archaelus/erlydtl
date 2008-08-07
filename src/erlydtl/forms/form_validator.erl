@@ -7,7 +7,11 @@
 %%%-------------------------------------------------------------------
 -module(erlydtl.forms.form_validator).
 
+-import(eunit).
 -include_lib("eunit.hrl").
+
+-import(lists).
+-import(proplists).
 
 %% API
 -export([validate/2,

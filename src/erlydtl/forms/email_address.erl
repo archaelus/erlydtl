@@ -7,7 +7,10 @@
 %%%-------------------------------------------------------------------
 -module(erlydtl.forms.email_address).
 
+-import(eunit).
 -include_lib("eunit.hrl").
+
+-import(lists).
 
 %% API
 -export([is_valid/1,
@@ -42,7 +45,7 @@ is_valid_email_address(User, Host) ->
     end.
 
 is_valid_email_host(Host) ->
-    case vhreg_domain:sanitise(Host) of 
+    case domain:sanitise(Host) of 
         H when H =:= Host -> true;
         _ -> {error, bad_host_name}
     end.

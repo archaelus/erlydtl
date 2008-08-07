@@ -7,7 +7,10 @@
 %%%-------------------------------------------------------------------
 -module(erlydtl.forms.form).
 
+-import(eunit).
 -include_lib("eunit.hrl").
+
+-import(lists).
 
 %% API
 -export([create/4,
