@@ -516,7 +516,12 @@ resolve_variable_ast({variable, {identifier, _, VarName}}, Context, FinderFuncti
         Val ->
             Val
     end,
-    {VarValue, VarName}.
+    {VarValue, VarName};
+resolve_variable_ast({string_literal, _, QLit}, _Context, FinderFunction) ->
+    QName = string:strip(QLit, both, $\"),
+    {erl_syntax:application(erl_syntax:atom(erlydtl_runtime), erl_syntax:atom(FinderFunction),
+                            [erl_syntax:string(QName), erl_syntax:variable("Variables")]),
+     QName}.
 
 resolve_scoped_variable_ast(VarName, Context) ->
     lists:foldl(fun(Scope, Value) ->
