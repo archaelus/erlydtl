@@ -38,7 +38,7 @@
 %% --------------------------------------------------------------------
 %% Definitions
 %% --------------------------------------------------------------------
--export([compile/2, compile/3]).
+-export([compile/2, compile/3, debug/2]).
 
 -record(dtl_context, {
     local_scopes = [], 
@@ -735,3 +735,17 @@ call_ast(Module, Variable, AstInfo, TreeWalker) ->
     CallAst = erl_syntax:case_expr(AppAst, [OkAst, ErrorAst]),   
     Module2 = list_to_atom(Module),
     with_dependencies(Module2:dependencies(), {{CallAst, AstInfo}, TreeWalker}).
+
+debug(scan, File) ->
+    {ok, Bin} = file:read_file(File),
+    erlydtl_scanner:scan(binary_to_list(Bin));
+debug(parse, File) ->
+    parse(File, #dtl_context{});
+debug(body_ast, File) ->
+    {ok, Parse, _CSum} = debug(parse, File),
+    body_ast(Parse, #dtl_context{}, #treewalker{});
+debug(forms, File) ->
+    {ok, Parse, CheckSum} = debug(parse, File),
+    {{Ast, Info}, _} = body_ast(Parse, #dtl_context{}, #treewalker{}),
+    forms(File, debug, Ast, Info, CheckSum).
+    
