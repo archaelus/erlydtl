@@ -12,6 +12,7 @@
 
 -import(lists).
 -import(proplists).
+-import(rvre).
 
 %% API
 -export([validate/2,

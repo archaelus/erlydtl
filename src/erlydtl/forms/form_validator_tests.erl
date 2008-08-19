@@ -11,7 +11,7 @@
 -include_lib("eunit.hrl").
 -import(lists).
 
--import(form_validator, [is_valid/1, validate/2]).
+-import(erlydtl.forms.form_validator, [is_valid/1, validate/2]).
 
 not_empty_test() ->
     ?assertMatch(false, 
