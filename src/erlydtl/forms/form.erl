@@ -11,20 +11,26 @@
 -include_lib("eunit.hrl").
 
 -import(lists).
+-import(proplists).
+-import(string).
 
 %% API
 -export([create/4,
          render/1,
+         render_with_data/2,
+         render_with_validation/3,
+         render_with_fields/2,
          text/2,
          text/3,
          password/2,
          password/3,
          submit/1,
          validate/2,
+         valid_fields/3,
          rules/1]).
 
 -record(form, {title, action, fields = [], rules = []}).
--record(vform, {form, data, validation_result}).
+%-record(vform, {form, data, validation_result}).
 -record(field, {name, type, title, rules = []}).
 
 %%====================================================================
@@ -55,7 +61,15 @@ submit(Name) ->
 render(F = #form{}) ->
     render_form(F, []).
 
-render(F = #form{}, ValidFields) ->
+render_with_data(F = #form{}, Data) ->
+    Result = validate(F, Data),
+    render_with_validation(F, Result, Data).
+
+render_with_validation(F, Result, Data) ->
+    ValidFields = valid_fields(F, Result, Data),
+    render_with_fields(F, ValidFields).
+
+render_with_fields(F = #form{}, ValidFields) ->
     render_form(F, ValidFields).
 
 validate(Form, Data) ->
@@ -63,35 +77,72 @@ validate(Form, Data) ->
 
 rules(#form{fields=Fields, rules=FormRules}) ->
     [{Name,Rules}
-     || #field{name=Name,rules=Rules} <- Fields]
+     || #field{type=Type,name=Name,rules=Rules} <- Fields,
+        Type =/= submit]
         ++ FormRules.
+
+valid_fields(F, Result, Data) ->
+    Simple = simple_copy(Result, Data),
+    Complex = [ case proplists:get_value(Field, Result) of
+                    [] -> [{Fi, proplists:get_value(Field, Data)} || Fi <- Fields];
+                    undefined -> []
+                end
+                || {Rule, [{duplication, [Field|Fields]}]} <- form_rules(F),
+                   proplists:get_value(Rule, Result) =:= []],
+    lists:flatten([Simple, Complex]).
+%% handle faux fields.
+
+%%====================================================================
+%% Internal functions
+%%====================================================================
+
+form_rules(#form{rules=R}) -> R.
 
 type_description(text) ->
     "Text field: ";
 type_description(password) ->
     "Password field: ".
 
-%%====================================================================
-%% Internal functions
-%%====================================================================
+simple_copy(Results, Data) ->
+    lists:flatmap(fun ({Field, []}) ->
+                          case proplists:get_value(Field, Data) of
+                              undefined -> [];
+                              V ->
+                                  [{Field, V}]
+                          end;
+                      (_) -> []
+                  end,
+                  Results).
 
 render_form(#form{title=Title,
                   action=Action,
                   fields=Fields}, ValidFields) ->
-    form_template:render([{action, Action},
-                          {title, Title},
-                          {fields, [ T || {ok, T} <- lists:map(fun (F) -> render_field(F, ValidFields) end, Fields)]}]).
+    form_template:render([{form_action, Action},
+                          {form_title, Title},
+                          {fields, [ T
+                                     || {ok, T} <-
+                                            lists:map(fun (F) -> render_field(F, ValidFields) end,
+                                                      Fields)]}]).
 
-render_field(#field{type=submit, name=Name, title=Title}, _Fixme) ->
+render_field(#field{type=submit, name=Name, title=Title}, _ValidFields) ->
     field_template:render([{type, "submit"},
                            {description, "Submit button: " ++ Name},
                            {name, Name},
                            {value, Title}]);
-render_field(#field{type=Type, name=Name, title=Title}, _Fixme) ->
-    named_field_template:render([{name, Name},
-                                 {title, Title},
-                                 {type, atom_to_list(Type)},
-                                 {description, type_description(Type)}]).
+render_field(#field{type=Type, name=Name, title=Title}, ValidFields) ->
+    case proplists:get_value(Name, ValidFields) of
+        undefined ->
+            named_field_template:render([{name, Name},
+                                         {title, Title},
+                                         {type, atom_to_list(Type)},
+                                         {description, type_description(Type)}]);
+        Value ->
+            named_field_template:render([{name, Name},
+                                         {title, Title},
+                                         {type, atom_to_list(Type)},
+                                         {description, type_description(Type)},
+                                         {value, Value}])
+    end.
 
 field_name(Prefix, Title) ->
     S = lists:filter(fun (C) when $A =< C, C =< $Z;
@@ -119,3 +170,32 @@ create_test() ->
                          password("Confirm Password:", "txtpasswordc", []),
                          submit("Signup")],
                         [{"passwords", [{duplication, ["txtpassword", "txtpasswordc"]}]}])).
+
+valid_fields_test() ->
+    ?assertMatch([{"valid", foo}],
+                 valid_fields(#form{},
+                              [{"valid", []}],
+                              [{"valid", foo}])),
+    ?assertMatch([{"valid", foo}],
+                 valid_fields(#form{rules=[{"Foo", [{duplication, ["valid", "other"]}]}]},
+                              [{"valid", []}],
+                              [{"valid", foo},
+                               {"invalid", bar},
+                               {"other", baz},
+                               {"random", baz}])),
+    ?assertMatch([{"valid", foo},
+                  {"other", foo}],
+                 valid_fields(#form{rules=[{"Foo", [{duplication, ["valid", "other"]}]}]},
+                              [{"valid", []},
+                               {"Foo", []}],
+                              [{"valid", foo},
+                               {"invalid", bar},
+                               {"other", baz},
+                               {"random", baz}])).
+
+simple_copy_test() ->
+    ?assertMatch([{"valid", foo}],
+                 simple_copy([{"invalid", [error]},
+                              {"valid", []}],
+                             [{"invalid", invalid},
+                              {"valid", foo}])).
