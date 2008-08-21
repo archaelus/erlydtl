@@ -254,6 +254,10 @@ forms(File, Module, BodyAst, BodyInfo, CheckSum) ->
                 [BodyAst])]),   
     
     ModuleAst  = erl_syntax:attribute(erl_syntax:atom(module), [erl_syntax:atom(Module)]),
+
+    ImportAsts = [erl_syntax:attribute(erl_syntax:atom(import),
+                                       [erl_syntax:atom(Atom)])
+                  || Atom <- [lists, io_lib, erlydtl_runtime, erlydtl_filters]],
     
     ExportAst = erl_syntax:attribute(erl_syntax:atom(export),
         [erl_syntax:list([erl_syntax:arity_qualifier(erl_syntax:atom(render), erl_syntax:integer(0)),
@@ -261,9 +265,11 @@ forms(File, Module, BodyAst, BodyInfo, CheckSum) ->
                     erl_syntax:arity_qualifier(erl_syntax:atom(source), erl_syntax:integer(0)),
                     erl_syntax:arity_qualifier(erl_syntax:atom(dependencies), erl_syntax:integer(0))])]),
     
-    [erl_syntax:revert(X) || X <- [ModuleAst, ExportAst, Render0FunctionAst,
-            Render1FunctionAst, SourceFunctionAst, DependenciesFunctionAst, RenderInternalFunctionAst
-            | BodyInfo#ast_info.pre_render_asts]].    
+    [erl_syntax:revert(X)
+     || X <- [ModuleAst, ExportAst | ImportAsts] ++ 
+             [Render0FunctionAst,
+              Render1FunctionAst, SourceFunctionAst, DependenciesFunctionAst, RenderInternalFunctionAst
+              | BodyInfo#ast_info.pre_render_asts]].
 
         
 % child templates should only consist of blocks at the top level
@@ -437,7 +443,7 @@ empty_ast(TreeWalker) ->
 
 string_ast(String, TreeWalker) ->
     {{erl_syntax:string(String), #ast_info{}}, TreeWalker}. %% less verbose AST, better for development and debugging
-    % {{erl_syntax:binary([erl_syntax:binary_field(erl_syntax:integer(X)) || X <- String]), #ast_info{}}, TreeWalker}.       
+    % {{erl_syntax:binary([erl_syntax:binary_field(erl_syntax:integer(X)) || X <- String]), #ast_info{}}, TreeWalker}.
 
 
 include_ast(File, Context, TreeWalker) ->
