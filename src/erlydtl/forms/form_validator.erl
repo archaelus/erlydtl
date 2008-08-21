@@ -122,3 +122,23 @@ same_value(Field, FieldValue, [Duplicate|Rest], Data) ->
             same_value(Field, FieldValue, Rest, Data);
         _ -> {error, {different_value, Field, Duplicate}}
     end.
+
+rule_fields({Name, Rules}) ->
+    lists:usort(lists:append([ predicate_fields(Name, Rule)
+                               || Rule <- Rules ])).
+
+rule_fields_test() ->
+    ?assertMatch([a, b, c],
+                 rule_fields({a, [not_empty,
+                                  string,
+                                  {duplication, [b, c]}]})).
+
+%% @private
+predicate_fields(Name, {duplication, List}) ->
+    List;
+predicate_fields(Name, not_empty) -> [Name];
+predicate_fields(Name, string) -> [Name];
+predicate_fields(Name, {regex, _}) -> [Name];
+predicate_fields(Name, {predicate, _}) -> [Name];
+predicate_fields(Name, email_address) -> [Name];
+predicate_fields(Name, {length, _}) -> [Name].
