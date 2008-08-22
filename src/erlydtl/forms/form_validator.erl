@@ -129,12 +129,6 @@ rule_fields({Name, Rules}) ->
     lists:usort(lists:append([ predicate_fields(Name, Rule)
                                || Rule <- Rules ])).
 
-rule_fields_test() ->
-    ?assertMatch([a, b, c],
-                 rule_fields({a, [not_empty,
-                                  string,
-                                  {duplication, [b, c]}]})).
-
 %% @private
 predicate_fields(Name, {duplication, List}) ->
     List;

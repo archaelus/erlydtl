@@ -120,3 +120,8 @@ valid_fields_test() ->
     ?assert(lists:member([], Valid) =:= false),
     ?assertMatch([{"txtusername", "Foobar"}], Valid).
     
+rule_fields_test() ->
+    ?assertMatch([a, b, c],
+                 form_validator:rule_fields({a, [not_empty,
+                                                 string,
+                                                 {duplication, [b, c]}]})).
