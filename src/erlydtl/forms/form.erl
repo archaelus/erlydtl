@@ -27,6 +27,7 @@
          submit/1,
          validate/2,
          valid_fields/3,
+         valid_post/2,
          rules/1]).
 
 -record(form, {title, action, fields = [], rules = []}).
@@ -94,6 +95,16 @@ valid_fields(F, Result, Data) ->
                 || {Rule, [{duplication, [Field|Fields]}]} <- form_rules(F),
                    proplists:get_value(Rule, Result) =:= []],
     lists:flatten([Simple, Complex]).
+
+valid_post(F = #form{}, Data) ->
+    Result = form:validate(F, Data),
+    Fields = valid_fields(F, Result, Data),
+    case form_validator:is_valid(Result) of
+        true ->
+            {valid, Fields};
+        false ->
+            {invalid, Result, Fields}
+    end.
 
 %%====================================================================
 %% Internal functions
