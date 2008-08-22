@@ -83,14 +83,17 @@ rules(#form{fields=Fields, rules=FormRules}) ->
 
 valid_fields(F, Result, Data) ->
     Simple = simple_copy(Result, Data),
-    Complex = [ case proplists:get_value(Field, Result) of
-                    [] -> [{Fi, proplists:get_value(Field, Data)} || Fi <- Fields];
-                    undefined -> []
+    % on a {Name, {duplication, ...} rule, put {Name, Field} into
+    Complex = [ case {proplists:get_value(Field, Result),
+                      proplists:get_value(Field, Simple)} of
+                    {[], Value} ->
+                        {Rule, Value};
+                    _ ->
+                        []
                 end
                 || {Rule, [{duplication, [Field|Fields]}]} <- form_rules(F),
                    proplists:get_value(Rule, Result) =:= []],
     lists:flatten([Simple, Complex]).
-%% handle faux fields.
 
 %%====================================================================
 %% Internal functions
@@ -184,9 +187,20 @@ valid_fields_test() ->
                                {"other", baz},
                                {"random", baz}])),
     ?assertMatch([{"valid", foo},
-                  {"other", foo}],
+                  {"Foo", foo}],
                  valid_fields(#form{rules=[{"Foo", [{duplication, ["valid", "other"]}]}]},
                               [{"valid", []},
+                               {"Foo", []}],
+                              [{"valid", foo},
+                               {"invalid", bar},
+                               {"other", baz},
+                               {"random", baz}])),
+    ?assertMatch([{"valid", foo},
+                  {"other", baz},
+                  {"Foo", foo}],
+                 valid_fields(#form{rules=[{"Foo", [{duplication, ["valid", "other"]}]}]},
+                              [{"valid", []},
+                               {"other", []},
                                {"Foo", []}],
                               [{"valid", foo},
                                {"invalid", bar},
