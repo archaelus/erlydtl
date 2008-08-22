@@ -81,6 +81,15 @@ predicate_test() ->
                  is_valid(validate([{"p", [{predicate, fun (_) -> false end}]}],
                                    [{"p", "foobar"}]
                                   ))).
+not_predicate_test() ->
+    ?assertMatch(false,
+                 is_valid(validate([{"p", [{not_predicate, fun (_) -> true end}]}],
+                                   [{"p", "foobar"}]
+                                  ))),
+    ?assertMatch(true,
+                 is_valid(validate([{"p", [{not_predicate, fun (_) -> false end}]}],
+                                   [{"p", "foobar"}]
+                                  ))).
 
 regex_test() ->
     ?assertMatch(true,
