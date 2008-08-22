@@ -100,6 +100,7 @@ validate_predicate_simple({length, [Min,Max]}, L) when is_list(L) ->
     end;
 validate_predicate_simple({length, [_Min,_Max]}, _L) -> false;
 validate_predicate_simple({predicate, P}, L) -> P(L);
+validate_predicate_simple({not_predicate, P}, L) -> P(L) =:= false;
 validate_predicate_simple(email_address, L) when is_list(L) ->
     email_address:validate(L);
 validate_predicate_simple({regex, RE}, L) ->
