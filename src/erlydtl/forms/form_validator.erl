@@ -130,7 +130,7 @@ rule_fields({Name, Rules}) ->
                                || Rule <- Rules ])).
 
 %% @private
-predicate_fields(Name, {duplication, List}) ->
+predicate_fields(_Name, {duplication, List}) ->
     List;
 predicate_fields(Name, not_empty) -> [Name];
 predicate_fields(Name, string) -> [Name];
