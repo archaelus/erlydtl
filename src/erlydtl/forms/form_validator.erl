@@ -15,13 +15,14 @@
 -import(rvre).
 
 %% API
--export([validate/2,
-         is_valid/1,
-         has_error/1,
-         invalid_fields/1,
-         field_errors/2,
-         errors/1,
-         valid_fields/2]).
+-export([validate/2
+         ,is_valid/1
+         ,has_error/1
+         ,invalid_fields/1
+         ,field_errors/2
+         ,errors/1
+         ,valid_fields/2
+         ,rule_fields/1]).
 
 %%====================================================================
 %% API
