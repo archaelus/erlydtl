@@ -247,11 +247,17 @@ forms(File, Module, BodyAst, BodyInfo, CheckSum) ->
                     ({XFile, XCheckSum}) -> 
                         erl_syntax:tuple([erl_syntax:string(XFile), erl_syntax:string(XCheckSum)])
                 end, BodyInfo#ast_info.dependencies))])]),     
-    
+
+   BodyAstTmp = erl_syntax:application(
+                    erl_syntax:atom(erlydtl_runtime),
+                    erl_syntax:atom(stringify_final),
+                    [BodyAst]
+                ),
+
     RenderInternalFunctionAst = erl_syntax:function(
         erl_syntax:atom(render2), 
             [erl_syntax:clause([erl_syntax:variable("Variables")], none, 
-                [BodyAst])]),   
+                [BodyAstTmp])]),   
     
     ModuleAst  = erl_syntax:attribute(erl_syntax:atom(module), [erl_syntax:atom(Module)]),
 
@@ -312,11 +318,7 @@ body_ast(DjangoParseTree, Context, TreeWalker) ->
             ({'comment', _Contents}, TreeWalkerAcc) ->
                 empty_ast(TreeWalkerAcc);
             ({'date', 'now', {string_literal, _Pos, FormatString}}, TreeWalkerAcc) ->
-                % Note: we can't use unescape_string_literal here
-                % because we want to allow escaping in the format string.
-                % We only want to remove the surrounding quotes, i.e. \"foo\"
-                Unquoted = string:sub_string(FormatString, 2, length(FormatString) - 1),
-                string_ast(erlydtl_dateformat:format(Unquoted), TreeWalkerAcc);
+                now_ast(FormatString, Context, TreeWalkerAcc);
             ({'autoescape', {identifier, _, OnOrOff}, Contents}, TreeWalkerAcc) ->
                 body_ast(Contents, Context#dtl_context{auto_escape = list_to_atom(OnOrOff)}, 
                     TreeWalkerAcc);
@@ -477,9 +479,13 @@ filter_ast(Variable, Filter, Context, TreeWalker) ->
 
 filter_ast_noescape(Variable, [{identifier, _, "escape"}], Context, TreeWalker) ->
     body_ast([Variable], Context, TreeWalker);
-filter_ast_noescape(Variable, [{identifier, _, Name} | Arg], Context, TreeWalker) ->
+filter_ast_noescape(Variable, Filter, Context, TreeWalker) ->
     {{VariableAst, Info}, TreeWalker2} = body_ast([Variable], Context, TreeWalker),
-    {{erl_syntax:application(erl_syntax:atom(erlydtl_filters), erl_syntax:atom(Name), 
+    VarValue = filter_ast1(Filter, VariableAst),
+    {{VarValue, Info}, TreeWalker2}.
+
+filter_ast1([{identifier, _, Name} | Arg], VariableAst) ->
+    erl_syntax:application(erl_syntax:atom(erlydtl_filters), erl_syntax:atom(Name), 
         [VariableAst | case Arg of 
                 [{string_literal, _, ArgName}] ->
                     [erl_syntax:string(unescape_string_literal(ArgName))];
@@ -487,8 +493,8 @@ filter_ast_noescape(Variable, [{identifier, _, Name} | Arg], Context, TreeWalker
                     [erl_syntax:integer(list_to_integer(ArgName))];
                 _ ->
                     []
-            end]), Info}, TreeWalker2}.
-
+            end]).
+ 
 search_for_escape_filter(_, _, #dtl_context{auto_escape = on}) ->
     on;
 search_for_escape_filter(_, _, #dtl_context{auto_escape = did}) ->
@@ -502,6 +508,8 @@ search_for_escape_filter({apply_filter, Variable, Filter}, _) ->
     search_for_escape_filter(Variable, Filter);
 search_for_escape_filter(_Variable, _Filter) ->
     off.
+
+
 
 resolve_variable_ast(VarTuple, Context) ->
     resolve_variable_ast(VarTuple, Context, 'fetch_value').
@@ -523,11 +531,20 @@ resolve_variable_ast({variable, {identifier, _, VarName}}, Context, FinderFuncti
             Val
     end,
     {VarValue, VarName};
+
+resolve_variable_ast({apply_filter, Variable, Filter}, Context, FinderFunction) ->
+    {VarAst, VarName} = resolve_variable_ast(Variable, Context, FinderFunction),
+    VarValue = filter_ast1(Filter, erl_syntax:list([VarAst])),
+    {VarValue, VarName};
+
 resolve_variable_ast({string_literal, _, QLit}, _Context, FinderFunction) ->
     QName = string:strip(QLit, both, $\"),
     {erl_syntax:application(erl_syntax:atom(erlydtl_runtime), erl_syntax:atom(FinderFunction),
                             [erl_syntax:string(QName), erl_syntax:variable("Variables")]),
-     QName}.
+     QName};
+
+resolve_variable_ast(What, _Context, _FinderFunction) ->
+   error_logger:error_msg("~p:resolve_variable_ast unhandled: ~p~n", [?MODULE, What]).
 
 resolve_scoped_variable_ast(VarName, Context) ->
     lists:foldl(fun(Scope, Value) ->
@@ -651,6 +668,18 @@ cycle_compat_ast(Names, _Context, TreeWalker) ->
     {{erl_syntax:application(
         erl_syntax:atom('erlydtl_runtime'), erl_syntax:atom('cycle'),
         [erl_syntax:tuple(NamesTuple), erl_syntax:variable("Counters")]), #ast_info{}}, TreeWalker}.
+
+now_ast(FormatString, _Context, TreeWalker) ->
+    % Note: we can't use unescape_string_literal here
+    % because we want to allow escaping in the format string.
+    % We only want to remove the surrounding escapes,
+    % i.e. \"foo\" becomes "foo"
+    UnescapeOuter = string:strip(FormatString, both, 34),
+    {{erl_syntax:application(
+        erl_syntax:atom(erlydtl_dateformat),
+        erl_syntax:atom(format),
+        [erl_syntax:string(UnescapeOuter)]),
+        #ast_info{}}, TreeWalker}.
 
 unescape_string_literal(String) ->
     unescape_string_literal(string:strip(String, both, 34), [], noslash).
