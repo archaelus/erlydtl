@@ -104,12 +104,16 @@ validate_predicate_simple({predicate, P}, L) -> P(L);
 validate_predicate_simple({not_predicate, P}, L) -> P(L) =:= false;
 validate_predicate_simple(email_address, L) when is_list(L) ->
     email_address:validate(L);
-validate_predicate_simple({regex, RE}, L) ->
+validate_predicate_simple(email_address, _L) ->
+    {error, not_a_string};
+validate_predicate_simple({regex, RE}, L) when is_list(L) ->
     case rvre:match(L, RE) of
         nomatch -> false;
         {match, _} -> true;
         {error, R} -> {error, R}
     end;
+validate_predicate_simple({regex, _RE}, _L) ->
+    {error, not_a_string};
 validate_predicate_simple(P, _) -> erlang:error({not_implemented, P}).
 
 %% @private
