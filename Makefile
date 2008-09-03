@@ -33,7 +33,7 @@ clean:
 	rm -fv erl_crash.dump $(PARSER).erl
 
 ebin/erlydtl/forms:
-	mkdir ebin/erlydtl/forms
+	mkdir -p ebin/erlydtl/forms
 
 ebin/erlydtl/forms/%.beam: src/erlydtl/forms/%.dtl
 	$(ERL) -pa ebin -noshell -s erlydtl_run compile \"$<\" erlydtl.forms.$(shell basename $< .dtl)
