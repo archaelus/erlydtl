@@ -181,7 +181,9 @@ field_name(Prefix, Title) ->
 
 field_name_test() ->
     ?assertMatch("txtpassword", field_name("txt", "Password:")),
-    ?assertMatch("txtpassword", field_name("txt", "pass word")).
+    ?assertMatch("txtpassword", field_name("txt", "pass word")),
+    ?assertMatch("pwpassword", field_name("pw", "Password:")),
+    ?assertMatch("pwpassword", field_name("pw", "pass word")).
 
 create_test() ->
     ?assertMatch(#form{},
