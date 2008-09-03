@@ -26,6 +26,7 @@
          password/3,
          submit/1,
          validate/2,
+         validate_field/3,
          valid_fields/3,
          valid_post/2,
          rules/1]).
@@ -75,6 +76,13 @@ render_with_fields(F = #form{}, ValidFields) ->
 
 validate(Form, Data) ->
     form_validator:validate(rules(Form), Data).
+
+validate_field(Form, Field, Data) ->
+    case proplists:get_value(Field, rules(Form)) of
+        undefined -> erlang:error({no_such_rule, Field});
+        List when is_list(List) ->
+            form_validator:validate_rule({Field, List}, Data)
+    end.
 
 rules(#form{fields=Fields, rules=FormRules}) ->
     [{Name,Rules}

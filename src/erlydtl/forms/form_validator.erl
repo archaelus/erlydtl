@@ -16,6 +16,7 @@
 
 %% API
 -export([validate/2
+         ,validate_rule/2
          ,is_valid/1
          ,has_error/1
          ,invalid_fields/1
